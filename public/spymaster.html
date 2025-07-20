@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spymaster View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .team-indicator {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .team-indicator.red { color: #ff4444; }
+        .team-indicator.blue { color: #4444ff; }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .word-card {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+            text-align: center;
+            padding: 5px;
+            position: relative;
+            border: 2px solid transparent;
+        }
+        
+        .word-card.red { 
+            background: #cc2222; 
+            border-color: #ff4444;
+        }
+        
+        .word-card.blue { 
+            background: #2222cc; 
+            border-color: #4444ff;
+        }
+        
+        .word-card.neutral { 
+            background: #666; 
+            border-color: #888;
+        }
+        
+        .word-card.assassin { 
+            background: #000; 
+            border-color: #333;
+            font-weight: 900;
+        }
+        
+        .word-card.revealed {
+            opacity: 0.3;
+            text-decoration: line-through;
+        }
+        
+        .word-card.revealed::after {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 20px;
+        }
+        
+        .stats {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .remaining {
+            margin: 10px 0;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+        
+        @media (max-width: 600px) {
+            .board { gap: 5px; }
+            .word-card { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>SPYMASTER VIEW</h1>
+        <div class="team-indicator" id="teamIndicator"></div>
+    </div>
+    
+    <div class="board" id="board"></div>
+    
+    <div class="stats">
+        <div class="remaining" id="remaining"></div>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #cc2222; border-color: #ff4444;"></div>
+                <span>Red Team</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2222cc; border-color: #4444ff;"></div>
+                <span>Blue Team</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #666; border-color: #888;"></div>
+                <span>Neutral</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #000; border-color: #333;"></div>
+                <span>Assassin</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const pathParts = window.location.pathname.split('/');
+        const gameId = pathParts[2];
+        const teamColor = pathParts[3];
+        const key = pathParts[4];
+        
+        let gameState = null;
+        
+        async function init() {
+            await loadGame();
+            setInterval(loadGame, 2000); // Poll for updates
+        }
+        
+        async function loadGame() {
+            try {
+                const response = await fetch(`/api/games/${gameId}/spymaster/${teamColor}/${key}`);
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        document.body.innerHTML = '<h1>Invalid spymaster key</h1>';
+                    }
+                    throw new Error('Failed to load game');
+                }
+                gameState = await response.json();
+                renderBoard();
+            } catch (error) {
+                console.error('Error loading game:', error);
+            }
+        }
+        
+        function renderBoard() {
+            // Set team indicator
+            const indicator = document.getElementById('teamIndicator');
+            indicator.textContent = `${teamColor} SPYMASTER`;
+            indicator.className = `team-indicator ${teamColor.toLowerCase()}`;
+            
+            // Render board
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            
+            gameState.words.forEach(row => {
+                row.forEach(word => {
+                    const card = document.createElement('div');
+                    card.className = `word-card ${word.belongsTo.toLowerCase()}`;
+                    if (word.revealed) {
+                        card.classList.add('revealed');
+                    }
+                    card.textContent = word.text;
+                    board.appendChild(card);
+                });
+            });
+            
+            // Update remaining count
+            const remaining = document.getElementById('remaining');
+            const redRemaining = 9 - gameState.score.RED;
+            const blueRemaining = 8 - gameState.score.BLUE;
+            remaining.innerHTML = `
+                <span style="color: #ff4444">Red: ${redRemaining}</span> | 
+                <span style="color: #4444ff">Blue: ${blueRemaining}</span>
+            `;
+        }
+        
+        init();
+    </script>
+</body>
+</html>
