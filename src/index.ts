@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -33,6 +34,10 @@ app.get('/board/:gameId', (req, res) => {
 
 app.get('/spymaster/:gameId/:team/:key', (req, res) => {
   res.sendFile(join(__dirname, '../public/spymaster.html'));
+});
+
+app.get('/add-theme', (req, res) => {
+  res.sendFile(join(__dirname, '../public/add-theme.html'));
 });
 
 // Health check

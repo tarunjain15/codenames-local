@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codenames Board</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: #2a2a2a;
+            position: relative;
+        }
+        
+        .score {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 10px;
+        }
+        
+        .team-score {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .team-score.red { color: #ff6b9d; }
+        .team-score.blue { color: #ff8c42; }
+        .team-score.current { text-decoration: underline; }
+        
+        .board-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 1200px;
+            height: 100%;
+            max-height: 800px;
+        }
+        
+        .word-card {
+            background: #3a3a3a;
+            border: 3px solid #555;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .word-card:hover:not(.revealed) {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+        
+        .word-card.revealed {
+            cursor: default;
+            color: white;
+        }
+        
+        .word-card.red { background: #c9376e; border-color: #ff6b9d; }
+        .word-card.blue { background: #cc5500; border-color: #ff8c42; }
+        .word-card.neutral { background: #666; border-color: #888; }
+        .word-card.assassin { background: #000; border-color: #333; }
+        
+        .clue-display {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2a2a2a;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .winner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        
+        .winner-overlay .new-game-btn-large {
+            margin-top: 40px;
+            padding: 20px 40px;
+            font-size: 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .winner-overlay .new-game-btn-large:hover {
+            background: #45a049;
+        }
+        
+        .new-game-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .new-game-btn:hover {
+            background: #45a049;
+        }
+        
+        .confirm-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            z-index: 2000;
+            text-align: center;
+            display: none;
+        }
+        
+        .confirm-dialog h3 {
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .confirm-dialog .word-preview {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-transform: uppercase;
+        }
+        
+        .confirm-dialog .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .confirm-dialog button {
+            padding: 10px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .confirm-dialog .confirm-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .confirm-dialog .confirm-btn:hover {
+            background: #45a049;
+        }
+        
+        .confirm-dialog .cancel-btn {
+            background: #f44336;
+            color: white;
+        }
+        
+        .confirm-dialog .cancel-btn:hover {
+            background: #da190b;
+        }
+        
+        .game-info-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            z-index: 2000;
+            display: none;
+            max-width: 90%;
+            width: 600px;
+        }
+        
+        .game-info-modal h3 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        
+        .game-info-modal .url-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+        
+        .game-info-modal .url-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .game-info-modal .url-text {
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin: 5px 0;
+            padding: 5px;
+            background: #333;
+            border-radius: 3px;
+        }
+        
+        .game-info-modal .close-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 30px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .game-info-modal .close-btn:hover {
+            background: #45a049;
+        }
+        
+        .qr-button {
+            padding: 5px 10px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        .qr-button:hover {
+            background: #1976D2;
+        }
+        
+        .qr-display {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .qr-display h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .qr-display canvas {
+            margin: 0 auto;
+        }
+        
+        .qr-close-btn {
+            margin-top: 10px;
+            padding: 5px 15px;
+            background: #666;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .qr-close-btn:hover {
+            background: #555;
+        }
+        
+        .show-info-btn {
+            position: absolute;
+            top: 20px;
+            right: 160px;
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .add-theme-btn {
+            position: absolute;
+            top: 20px;
+            right: 310px;
+            padding: 10px 20px;
+            background: #9c27b0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .add-theme-btn:hover {
+            background: #7b1fa2;
+        }
+        
+        @media (max-width: 768px) {
+            .word-card { font-size: 16px; }
+            .board { gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CODENAMES</h1>
+        <button class="add-theme-btn" onclick="window.open('/add-theme', '_blank')">Add Theme</button>
+        <button class="show-info-btn" onclick="showGameInfo()">Game Info</button>
+        <button class="new-game-btn" onclick="createNewGame()">New Game</button>
+        <div class="score">
+            <div class="team-score red" id="redScore">PINK: 0</div>
+            <div class="team-score blue" id="blueScore">ORANGE: 0</div>
+        </div>
+    </div>
+    
+    <div class="board-container">
+        <div class="board" id="board"></div>
+    </div>
+    
+    <div class="clue-display" id="clueDisplay" style="display: none;"></div>
+    <div class="winner-overlay" id="winnerOverlay" style="display: none;"></div>
+    
+    <div class="overlay" id="overlay"></div>
+    <div class="confirm-dialog" id="confirmDialog">
+        <h3>Reveal this word?</h3>
+        <div class="word-preview" id="wordPreview"></div>
+        <div class="buttons">
+            <button class="confirm-btn" onclick="confirmReveal()">Reveal</button>
+            <button class="cancel-btn" onclick="cancelReveal()">Cancel</button>
+        </div>
+    </div>
+    
+    <div class="game-info-modal" id="gameInfoModal">
+        <h3>Game Information</h3>
+        <div class="url-section">
+            <div class="url-label">🎮 Game ID:</div>
+            <div class="url-text" id="gameIdText"></div>
+        </div>
+        <div class="url-section">
+            <div class="url-label">📺 Board URL (This Screen):</div>
+            <div class="url-text" id="boardUrlText"></div>
+        </div>
+        <div class="url-section">
+            <div class="url-label">🩷 Pink Spymaster URL: <button class="qr-button" onclick="showQRCode('pink')">Show QR</button></div>
+            <div class="url-text" id="redSpymasterText"></div>
+        </div>
+        <div class="url-section">
+            <div class="url-label">🧡 Orange Spymaster URL: <button class="qr-button" onclick="showQRCode('orange')">Show QR</button></div>
+            <div class="url-text" id="blueSpymasterText"></div>
+        </div>
+        <div class="qr-display" id="qrDisplay">
+            <h4 id="qrTitle"></h4>
+            <div id="qrCanvas"></div>
+            <button class="qr-close-btn" onclick="hideQRCode()">Close QR</button>
+        </div>
+        <button class="close-btn" onclick="closeGameInfo()">Close</button>
+    </div>
+    
+    <script>
+        const gameId = window.location.pathname.split('/').pop();
+        let ws = null;
+        let gameState = null;
+        let pendingReveal = null;
+        let gameInfo = null;
+        
+        async function init() {
+            await loadGame();
+            await loadGameInfo();
+            connectWebSocket();
+        }
+        
+        async function loadGameInfo() {
+            try {
+                const response = await fetch(`/api/games/${gameId}/info`);
+                if (!response.ok) {
+                    gameInfo = {
+                        gameId: gameId,
+                        boardUrl: `${window.location.origin}/board/${gameId}`,
+                        redSpymasterUrl: 'Not available - API error',
+                        blueSpymasterUrl: 'Not available - API error'
+                    };
+                    return;
+                }
+                
+                const data = await response.json();
+                const baseUrl = window.location.origin;
+                gameInfo = {
+                    gameId: data.gameId,
+                    boardUrl: `${baseUrl}${data.boardUrl}`,
+                    redSpymasterUrl: `${baseUrl}${data.redSpymasterUrl}`,
+                    blueSpymasterUrl: `${baseUrl}${data.blueSpymasterUrl}`
+                };
+                
+                // Store in localStorage for future reference
+                localStorage.setItem(`gameInfo_${gameId}`, JSON.stringify(gameInfo));
+            } catch (error) {
+                console.error('Error loading game info:', error);
+                gameInfo = {
+                    gameId: gameId,
+                    boardUrl: window.location.href,
+                    redSpymasterUrl: 'Not available - Load error',
+                    blueSpymasterUrl: 'Not available - Load error'
+                };
+            }
+        }
+        
+        async function loadGame() {
+            try {
+                const response = await fetch(`/api/games/${gameId}/public`);
+                if (!response.ok) throw new Error('Failed to load game');
+                gameState = await response.json();
+                renderBoard();
+            } catch (error) {
+                console.error('Error loading game:', error);
+            }
+        }
+        
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/game/${gameId}`);
+            
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.type === 'GAME_UPDATE') {
+                    gameState = message.payload;
+                    renderBoard();
+                }
+            };
+            
+            ws.onclose = () => {
+                setTimeout(connectWebSocket, 1000);
+            };
+        }
+        
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            
+            gameState.words.forEach((row, rowIndex) => {
+                row.forEach((word, colIndex) => {
+                    const card = document.createElement('div');
+                    card.className = 'word-card';
+                    card.textContent = word.text;
+                    
+                    if (word.revealed && word.belongsTo) {
+                        card.classList.add('revealed', word.belongsTo.toLowerCase());
+                    }
+                    
+                    card.onclick = () => {
+                        if (!word.revealed && !gameState.winner) {
+                            showConfirmDialog(word.text, rowIndex, colIndex);
+                        }
+                    };
+                    board.appendChild(card);
+                });
+            });
+            
+            // Update remaining cards (not score)
+            const redRemaining = 9 - gameState.score.RED;
+            const blueRemaining = 8 - gameState.score.BLUE;
+            document.getElementById('redScore').textContent = `PINK: ${redRemaining}`;
+            document.getElementById('blueScore').textContent = `ORANGE: ${blueRemaining}`;
+            
+            // Remove current team indicator since turn tracking is manual
+            document.querySelectorAll('.team-score').forEach(el => {
+                el.classList.remove('current');
+            });
+            
+            // Show clue if present
+            if (gameState.lastClue) {
+                const clueDisplay = document.getElementById('clueDisplay');
+                clueDisplay.textContent = `${gameState.lastClue.word} - ${gameState.lastClue.count}`;
+                clueDisplay.style.display = 'block';
+            }
+            
+            // Show winner
+            if (gameState.winner) {
+                const overlay = document.getElementById('winnerOverlay');
+                overlay.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="color: ${gameState.winner.toLowerCase() === 'red' ? '#ff6b9d' : '#ff8c42'}">
+                            ${gameState.winner === 'RED' ? 'PINK' : 'ORANGE'} TEAM WINS!
+                        </div>
+                        <button class="new-game-btn-large" onclick="createNewGame()">Start New Game</button>
+                    </div>
+                `;
+                overlay.style.display = 'flex';
+            }
+        }
+        
+        function showConfirmDialog(wordText, row, col) {
+            pendingReveal = { row, col };
+            document.getElementById('wordPreview').textContent = wordText;
+            document.getElementById('confirmDialog').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+        
+        function cancelReveal() {
+            pendingReveal = null;
+            document.getElementById('confirmDialog').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+        
+        async function confirmReveal() {
+            if (!pendingReveal) return;
+            
+            const { row, col } = pendingReveal;
+            cancelReveal(); // Close dialog
+            
+            try {
+                await fetch(`/api/games/${gameId}/reveal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ row, col })
+                });
+            } catch (error) {
+                console.error('Error revealing word:', error);
+            }
+        }
+        
+        async function createNewGame() {
+            // Get the last used theme from sessionStorage
+            const lastTheme = sessionStorage.getItem('lastTheme') || 'family';
+            
+            // Show theme selection with descriptions
+            const themePrompt = `Select a theme for the new game:
+            
+1. family - North Indian Jain Family (food, kids, music, TV, movies)
+2. python-typescript - Python & TypeScript programming
+3. domain-driven - Domain-Driven Design & Architecture
+4. shell-cli - Shell Scripts & CLI tools
+5. macbook-workflow - MacBook Power User
+            
+Enter theme ID (default: ${lastTheme}):`;
+            
+            const selectedTheme = prompt(themePrompt, lastTheme);
+            if (!selectedTheme) return;
+            
+            // Store the selected theme for next time
+            sessionStorage.setItem('lastTheme', selectedTheme);
+            
+            if (!confirm('Start a new game? This will end the current game.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/games', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ themeId: selectedTheme })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create new game');
+                
+                const data = await response.json();
+                
+                // Store game info for the new game
+                const baseUrl = window.location.origin;
+                const newGameInfo = {
+                    gameId: data.gameId,
+                    boardUrl: `${baseUrl}${data.boardUrl}`,
+                    redSpymasterUrl: `${baseUrl}${data.redSpymasterUrl}`,
+                    blueSpymasterUrl: `${baseUrl}${data.blueSpymasterUrl}`
+                };
+                localStorage.setItem(`gameInfo_${data.gameId}`, JSON.stringify(newGameInfo));
+                
+                // Redirect to new game immediately without alert
+                window.location.href = `/board/${data.gameId}`;
+            } catch (error) {
+                console.error('Error creating new game:', error);
+                alert('Failed to create new game. Please try again.');
+            }
+        }
+        
+        function showGameInfo() {
+            if (gameInfo) {
+                document.getElementById('gameIdText').textContent = gameInfo.gameId;
+                document.getElementById('boardUrlText').textContent = gameInfo.boardUrl;
+                document.getElementById('redSpymasterText').textContent = gameInfo.redSpymasterUrl;
+                document.getElementById('blueSpymasterText').textContent = gameInfo.blueSpymasterUrl;
+            }
+            document.getElementById('gameInfoModal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+        
+        function closeGameInfo() {
+            document.getElementById('gameInfoModal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            hideQRCode();
+        }
+        
+        async function showQRCode(team) {
+            const qrDisplay = document.getElementById('qrDisplay');
+            const qrTitle = document.getElementById('qrTitle');
+            const qrCanvas = document.getElementById('qrCanvas');
+            
+            let url, title;
+            if (team === 'pink') {
+                url = gameInfo.redSpymasterUrl;
+                title = '🩷 Pink Spymaster QR Code';
+            } else {
+                url = gameInfo.blueSpymasterUrl;
+                title = '🧡 Orange Spymaster QR Code';
+            }
+            
+            qrTitle.textContent = title;
+            qrCanvas.innerHTML = 'Generating QR code...'; // Show loading message
+            
+            try {
+                // Request QR code from server
+                const response = await fetch(`/api/qrcode?url=${encodeURIComponent(url)}`);
+                if (!response.ok) {
+                    throw new Error('Failed to generate QR code');
+                }
+                
+                const data = await response.json();
+                
+                // Display the QR code image
+                qrCanvas.innerHTML = `<img src="${data.qrCode}" alt="QR Code" style="max-width: 100%;">`;
+            } catch (error) {
+                console.error('QR Code error:', error);
+                qrCanvas.innerHTML = '<p style="color: red;">Failed to generate QR code</p>';
+            }
+            
+            qrDisplay.style.display = 'block';
+        }
+        
+        function hideQRCode() {
+            document.getElementById('qrDisplay').style.display = 'none';
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && pendingReveal) {
+                cancelReveal();
+            } else if (e.key === 'Enter' && pendingReveal) {
+                confirmReveal();
+            }
+        });
+        
+        // Make functions globally accessible
+        window.showQRCode = showQRCode;
+        window.hideQRCode = hideQRCode;
+        window.showGameInfo = showGameInfo;
+        window.closeGameInfo = closeGameInfo;
+        window.createNewGame = createNewGame;
+        window.confirmReveal = confirmReveal;
+        window.cancelReveal = cancelReveal;
+        
+        init();
+    </script>
+</body>
+</html>

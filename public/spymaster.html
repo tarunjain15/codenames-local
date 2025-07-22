@@ -30,8 +30,8 @@
             margin-top: 10px;
         }
         
-        .team-indicator.red { color: #ff4444; }
-        .team-indicator.blue { color: #4444ff; }
+        .team-indicator.red { color: #ff6b9d; }
+        .team-indicator.blue { color: #ff8c42; }
         
         .board {
             display: grid;
@@ -57,13 +57,13 @@
         }
         
         .word-card.red { 
-            background: #cc2222; 
-            border-color: #ff4444;
+            background: #c9376e; 
+            border-color: #ff6b9d;
         }
         
         .word-card.blue { 
-            background: #2222cc; 
-            border-color: #4444ff;
+            background: #cc5500; 
+            border-color: #ff8c42;
         }
         
         .word-card.neutral { 
@@ -139,12 +139,12 @@
         <div class="remaining" id="remaining"></div>
         <div class="legend">
             <div class="legend-item">
-                <div class="legend-color" style="background: #cc2222; border-color: #ff4444;"></div>
-                <span>Red Team</span>
+                <div class="legend-color" style="background: #c9376e; border-color: #ff6b9d;"></div>
+                <span>Pink Team</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #2222cc; border-color: #4444ff;"></div>
-                <span>Blue Team</span>
+                <div class="legend-color" style="background: #cc5500; border-color: #ff8c42;"></div>
+                <span>Orange Team</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color" style="background: #666; border-color: #888;"></div>
@@ -189,7 +189,7 @@
         function renderBoard() {
             // Set team indicator
             const indicator = document.getElementById('teamIndicator');
-            indicator.textContent = `${teamColor} SPYMASTER`;
+            indicator.textContent = `${teamColor === 'RED' ? 'PINK' : 'ORANGE'} SPYMASTER`;
             indicator.className = `team-indicator ${teamColor.toLowerCase()}`;
             
             // Render board
@@ -213,8 +213,8 @@
             const redRemaining = 9 - gameState.score.RED;
             const blueRemaining = 8 - gameState.score.BLUE;
             remaining.innerHTML = `
-                <span style="color: #ff4444">Red: ${redRemaining}</span> | 
-                <span style="color: #4444ff">Blue: ${blueRemaining}</span>
+                <span style="color: #ff6b9d">Pink: ${redRemaining}</span> | 
+                <span style="color: #ff8c42">Orange: ${blueRemaining}</span>
             `;
         }
         

@@ -6,14 +6,22 @@ export class GameEngine {
   private static readonly TEAM_CARDS = { first: 9, second: 8 };
   private static readonly NEUTRAL_CARDS = 7;
   private static readonly ASSASSIN_CARDS = 1;
+  private static recentWords: Set<string> = new Set();
+  private static readonly MAX_RECENT_WORDS = 75; // 3 games worth
 
   static createGame(wordList: string[]): Game {
-    if (wordList.length < 25) {
-      throw new Error('Need at least 25 words to create a game');
+    // Sanitize word list: trim whitespace and convert to uppercase
+    const sanitizedWordList = wordList.map(word => word.trim().toUpperCase());
+    
+    // Remove duplicates
+    const uniqueWords = [...new Set(sanitizedWordList)];
+    
+    if (uniqueWords.length < 25) {
+      throw new Error(`Need at least 25 unique words to create a game. Found only ${uniqueWords.length} unique words.`);
     }
 
     const gameId = nanoid(10);
-    const selectedWords = this.selectRandomWords(wordList, 25);
+    const selectedWords = this.selectRandomWords(uniqueWords, 25);
     const startingTeam = Math.random() < 0.5 ? 'RED' : 'BLUE';
     const cardAssignments = this.generateCardAssignments(startingTeam);
     const words = this.createWordGrid(selectedWords, cardAssignments);
@@ -79,8 +87,33 @@ export class GameEngine {
   }
 
   private static selectRandomWords(wordList: string[], count: number): string[] {
-    const shuffled = [...wordList].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+    // Filter out recently used words
+    const availableWords = wordList.filter(word => !this.recentWords.has(word.toUpperCase()));
+    
+    // If we don't have enough unique words, warn and use some recent ones
+    if (availableWords.length < count) {
+      console.warn(`Only ${availableWords.length} unique words available. Consider adding more words to your list.`);
+      // Clear some old words if needed
+      if (availableWords.length < count) {
+        this.recentWords.clear();
+        return this.selectRandomWords(wordList, count);
+      }
+    }
+    
+    const shuffled = [...availableWords].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, count);
+    
+    // Add selected words to recent history
+    selected.forEach(word => {
+      this.recentWords.add(word);
+      // Keep recent words list from growing too large
+      if (this.recentWords.size > this.MAX_RECENT_WORDS) {
+        const firstWord = this.recentWords.values().next().value;
+        this.recentWords.delete(firstWord);
+      }
+    });
+    
+    return selected;
   }
 
   private static generateCardAssignments(startingTeam: TeamColor): CardType[] {

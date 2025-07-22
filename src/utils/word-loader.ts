@@ -1,5 +1,8 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import { getTheme, THEMES } from '../domain/themes.js';
+import { ClaudeWordGenerator, StaticWordGenerator } from '../services/word-generator.js';
+import { GameEngine } from '../domain/game.js';
 
 const DEFAULT_WORDS = [
   // Default Codenames words as fallback

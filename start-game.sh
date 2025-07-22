@@ -7,7 +7,7 @@ set -e
 
 # Default values
 PORT=3000
-WORDS="default"
+THEME="family"
 QR_CODES=false
 
 # Parse arguments
@@ -17,8 +17,8 @@ while [[ $# -gt 0 ]]; do
       PORT="$2"
       shift 2
       ;;
-    --words)
-      WORDS="$2"
+    --theme)
+      THEME="$2"
       shift 2
       ;;
     --qr-codes)
@@ -29,7 +29,8 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo "Options:"
       echo "  --port PORT        Server port (default: 3000)"
-      echo "  --words FILE       Word list file name (default: 'default')"
+      echo "  --theme THEME      Game theme (default: 'family')"
+      echo "                     Options: family, python-typescript, domain-driven, shell-cli, macbook-workflow"
       echo "  --qr-codes         Generate QR codes for easy access"
       exit 0
       ;;
@@ -40,10 +41,25 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Check if server is already running
+# Check if server is already running and kill it
 if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null ; then
-    echo "⚠️  Port $PORT is already in use. Please stop the existing server or use a different port."
-    exit 1
+    echo "⚠️  Found existing server on port $PORT"
+    # Get all PIDs of processes using the port (including parent npm process)
+    EXISTING_PIDS=$(lsof -Pi :$PORT -sTCP:LISTEN -t)
+    for PID in $EXISTING_PIDS; do
+        echo "🛑 Stopping process (PID: $PID)..."
+        kill $PID 2>/dev/null || true
+    done
+    # Give it a moment to shut down gracefully
+    sleep 2
+    # Force kill any remaining processes
+    for PID in $EXISTING_PIDS; do
+        if kill -0 $PID 2>/dev/null; then
+            echo "⚠️  Force killing process $PID..."
+            kill -9 $PID 2>/dev/null || true
+        fi
+    done
+    echo "✅ Old server stopped"
 fi
 
 # Get local IP address
@@ -74,7 +90,7 @@ fi
 echo "🎮 Creating new game..."
 RESPONSE=$(curl -s -X POST http://localhost:$PORT/api/games \
   -H "Content-Type: application/json" \
-  -d "{\"wordListName\": \"$WORDS\"}")
+  -d "{\"themeId\": \"$THEME\"}")
 
 if [ -z "$RESPONSE" ]; then
     echo "❌ Failed to create game. Server might not be ready yet."
@@ -94,10 +110,10 @@ echo ""
 echo "📺 Board URL (for TV):"
 echo "   $BOARD_URL"
 echo ""
-echo "🔴 Red Spymaster URL:"
+echo "🩷 Pink Spymaster URL:"
 echo "   $RED_URL"
 echo ""
-echo "🔵 Blue Spymaster URL:"
+echo "🧡 Orange Spymaster URL:"
 echo "   $BLUE_URL"
 echo ""
 
@@ -109,10 +125,10 @@ if [ "$QR_CODES" = true ]; then
         echo "Board (TV):"
         qrencode -t ANSIUTF8 -s 1 "$BOARD_URL"
         echo ""
-        echo "Red Spymaster:"
+        echo "Pink Spymaster:"
         qrencode -t ANSIUTF8 -s 1 "$RED_URL"
         echo ""
-        echo "Blue Spymaster:"
+        echo "Orange Spymaster:"
         qrencode -t ANSIUTF8 -s 1 "$BLUE_URL"
     else
         echo "ℹ️  Install qrencode to generate QR codes: brew install qrencode"

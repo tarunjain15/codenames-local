@@ -3,6 +3,7 @@ import type { Game } from '../domain/types.js';
 // Simple in-memory store for local play
 export class GameStore {
   private games: Map<string, Game> = new Map();
+  private currentTheme: string = 'default';
 
   save(game: Game): void {
     this.games.set(game.id, game);
@@ -14,6 +15,14 @@ export class GameStore {
 
   delete(id: string): boolean {
     return this.games.delete(id);
+  }
+
+  setCurrentTheme(theme: string): void {
+    this.currentTheme = theme;
+  }
+
+  getCurrentTheme(): string {
+    return this.currentTheme;
   }
 
   // Clean up old games (older than 24 hours)
